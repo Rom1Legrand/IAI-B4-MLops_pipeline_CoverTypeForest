@@ -29,7 +29,7 @@ def save_test_results():
     csv_buffer = df_results.to_csv(index=False).encode()
     s3.put_object(
         Bucket=bucket,
-        Key=f'test_reports/test_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
+        Key=f'covertype/test_reports/test_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv',
         Body=csv_buffer
     )
 
