@@ -23,12 +23,9 @@ def new_data():
     return pd.read_csv(data_obj['Body'])
 
 def save_test_results():
-    """Sauvegarde les résultats dans un CSV sur S3"""
     df_results = pd.DataFrame(test_results)
     s3 = boto3.client('s3')
     bucket = os.environ['S3_BUCKET']
-    
-    # Sauvegarder en CSV
     csv_buffer = df_results.to_csv(index=False).encode()
     s3.put_object(
         Bucket=bucket,
@@ -36,24 +33,116 @@ def save_test_results():
         Body=csv_buffer
     )
 
-# Modifier les tests pour ajouter leurs résultats
 def test_schema_consistency(reference_data, new_data):
+    """Vérifie que les deux datasets ont les mêmes colonnes"""
     try:
         assert list(reference_data.columns) == list(new_data.columns)
         test_results.append({
             'test_name': 'schema_consistency',
             'status': 'PASSED',
+            'description': 'Colonnes identiques',
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
     except AssertionError:
         test_results.append({
             'test_name': 'schema_consistency',
             'status': 'FAILED',
+            'description': 'Colonnes différentes détectées',
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
         raise
 
-# [Autres tests similaires...]
+def test_data_types(reference_data, new_data):
+    """Vérifie que les types de données sont cohérents"""
+    try:
+        for col in reference_data.columns:
+            assert reference_data[col].dtype == new_data[col].dtype
+        test_results.append({
+            'test_name': 'data_types',
+            'status': 'PASSED',
+            'description': 'Types de données cohérents',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except AssertionError:
+        test_results.append({
+            'test_name': 'data_types',
+            'status': 'FAILED',
+            'description': f'Type incohérent pour la colonne {col}',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+        raise
+
+def test_value_ranges(reference_data, new_data):
+    """Vérifie que les nouvelles données sont dans les plages acceptables"""
+    try:
+        for col in reference_data.columns:
+            if pd.api.types.is_numeric_dtype(reference_data[col]):
+                ref_min, ref_max = reference_data[col].min(), reference_data[col].max()
+                new_min, new_max = new_data[col].min(), new_data[col].max()
+                assert new_min >= ref_min * 0.8, f"Valeurs trop basses dans {col}"
+                assert new_max <= ref_max * 1.2, f"Valeurs trop hautes dans {col}"
+        test_results.append({
+            'test_name': 'value_ranges',
+            'status': 'PASSED',
+            'description': 'Valeurs dans les plages acceptables',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except AssertionError as e:
+        test_results.append({
+            'test_name': 'value_ranges',
+            'status': 'FAILED',
+            'description': str(e),
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+        raise
+
+def test_missing_values(reference_data, new_data):
+    """Vérifie le pourcentage de valeurs manquantes"""
+    max_missing_pct = 0.1
+    try:
+        for col in new_data.columns:
+            missing_pct = new_data[col].isnull().mean()
+            assert missing_pct <= max_missing_pct
+        test_results.append({
+            'test_name': 'missing_values',
+            'status': 'PASSED',
+            'description': 'Pas de valeurs manquantes excessives',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except AssertionError:
+        test_results.append({
+            'test_name': 'missing_values',
+            'status': 'FAILED',
+            'description': f'Trop de valeurs manquantes dans {col}',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+        raise
+
+def test_statistical_distribution(reference_data, new_data):
+    """Compare les distributions statistiques de base"""
+    try:
+        numerical_columns = reference_data.select_dtypes(include=[np.number]).columns
+        scaler = StandardScaler()
+        for col in numerical_columns:
+            ref_scaled = scaler.fit_transform(reference_data[col].values.reshape(-1, 1))
+            new_scaled = scaler.transform(new_data[col].values.reshape(-1, 1))
+            ref_mean = np.mean(ref_scaled)
+            new_mean = np.mean(new_scaled)
+            assert abs(ref_mean - new_mean) < 0.5
+        test_results.append({
+            'test_name': 'statistical_distribution',
+            'status': 'PASSED',
+            'description': 'Distributions statistiques similaires',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except AssertionError:
+        test_results.append({
+            'test_name': 'statistical_distribution',
+            'status': 'FAILED',
+            'description': f'Distribution trop différente pour {col}',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+        raise
 
 def pytest_sessionfinish(session):
     """Appelé après tous les tests"""
