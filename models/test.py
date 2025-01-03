@@ -1,15 +1,22 @@
-import pytest
+import boto3
 import pandas as pd
 import numpy as np
+import os
 from sklearn.preprocessing import StandardScaler
 
 @pytest.fixture
 def reference_data():
-    return pd.read_csv('data/reference.csv')
+    s3 = boto3.client('s3')
+    bucket = os.environ['S3_BUCKET']
+    data_obj = s3.get_object(Bucket=bucket, Key='covertype/reference/covtype_80.csv')
+    return pd.read_csv(data_obj['Body'])
 
 @pytest.fixture
 def new_data():
-    return pd.read_csv('data/new_data.csv')
+    s3 = boto3.client('s3')
+    bucket = os.environ['S3_BUCKET']
+    data_obj = s3.get_object(Bucket=bucket, Key='covertype/new_data/covtype_20.csv')
+    return pd.read_csv(data_obj['Body'])
 
 def test_schema_consistency(reference_data, new_data):
     """Vérifie que les deux datasets ont les mêmes colonnes"""
