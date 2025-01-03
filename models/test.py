@@ -25,22 +25,37 @@ def new_data():
 def save_test_results():
     """Sauvegarde les résultats dans un CSV sur S3"""
     try:
+        print("Création du DataFrame des résultats de test...")
         df_results = pd.DataFrame(test_results)
+        
+        print("Configuration du client S3...")
         s3 = boto3.client('s3')
         bucket = os.environ['S3_BUCKET']
         key = f'covertype/test_reports/test_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
         
-        print(f"Tentative de sauvegarde du rapport sur S3: {bucket}/{key}")
+        print(f"Tentative de sauvegarde sur S3: {bucket}/{key}")
         csv_buffer = df_results.to_csv(index=False).encode()
+        
+        # Test des permissions S3
+        print("Test des permissions S3...")
+        try:
+            s3.list_objects(Bucket=bucket, Prefix='covertype/test_reports/')
+            print("Accès en lecture OK")
+        except Exception as e:
+            print(f"Erreur lors du test de lecture S3: {str(e)}")
+        
+        # Tentative de sauvegarde
+        print("Tentative de sauvegarde du fichier...")
         s3.put_object(
             Bucket=bucket,
             Key=key,
             Body=csv_buffer
         )
-        print("Rapport sauvegardé avec succès sur S3")
+        print(f"Rapport sauvegardé avec succès: {key}")
+        
     except Exception as e:
-        print(f"Erreur lors de la sauvegarde du rapport sur S3: {str(e)}")
-        raise
+        print(f"Erreur lors de la sauvegarde du rapport: {str(e)}")
+        print(f"Variables d'environnement disponibles: {list(os.environ.keys())}")
 
 def test_schema_consistency(reference_data, new_data):
     """Vérifie que les deux datasets ont les mêmes colonnes"""
