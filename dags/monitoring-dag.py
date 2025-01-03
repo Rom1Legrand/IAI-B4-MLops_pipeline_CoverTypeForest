@@ -128,7 +128,7 @@ def detect_data_drift(**context):
 def trigger_jenkins_retrain(**context):
     """Déclenche le retraining via Jenkins"""
     jenkins_url = "http://jenkins:8080"
-    job_name = "cover_type_retrain"
+    job_name = "covertype_retrain"
 
     try:
         response = requests.post(
