@@ -168,12 +168,14 @@ def test_statistical_distribution(reference_data, new_data):
         })
         raise
 
-@pytest.hookimpl(tryfirst=True)
-def pytest_sessionfinish(session):
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
     print("\n============================================")
     print("DÉBUT DE LA CRÉATION DU RAPPORT")
     print(f"Nombre de résultats capturés : {len(test_results)}")
     save_test_results()
     print("FIN DE LA CRÉATION DU RAPPORT")
     print("============================================\n")
-        
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_sessionfinish(session):
+    save_test_results()
