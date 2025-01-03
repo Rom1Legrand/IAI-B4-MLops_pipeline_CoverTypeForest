@@ -8,6 +8,12 @@ from sklearn.preprocessing import StandardScaler
 
 test_results = []  # Pour stocker les résultats des tests
 
+@pytest.fixture(autouse=True, scope="session")
+def handle_test_results(request):
+    yield
+    print("\nSauvegarde des résultats...")
+    save_test_results()
+
 @pytest.fixture
 def reference_data():
     s3 = boto3.client('s3')
@@ -175,7 +181,3 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     save_test_results()
     print("FIN DE LA CRÉATION DU RAPPORT")
     print("============================================\n")
-
-@pytest.hookimpl(tryfirst=True)
-def pytest_sessionfinish(session):
-    save_test_results()
