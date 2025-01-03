@@ -13,9 +13,16 @@ RUN apt-get update && apt-get install -y \
     gcc \
     git \
     curl \
+    unzip \
     docker.io \
     docker-compose \
     && rm -rf /var/lib/apt/lists/*
+
+# Installation d'AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf aws awscliv2.zip
 
 # Ajout de jenkins au groupe docker existant
 RUN usermod -aG docker jenkins
