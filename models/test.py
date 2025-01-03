@@ -170,9 +170,9 @@ def test_statistical_distribution(reference_data, new_data):
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_sessionfinish(session):
-    """Appelé après tous les tests"""
-    print("Finalisation de la session de test - Sauvegarde du rapport")
+    print("Début de la création du rapport de test")
+    print(f"Nombre de résultats : {len(test_results)}")
     save_test_results()
-
+    print("Fin de la création du rapport de test")
 
         
