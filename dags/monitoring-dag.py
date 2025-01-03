@@ -171,10 +171,10 @@ def send_email_with_smtp(**context):
     if subject is None or body is None:
         raise ValueError("Le sujet ou le corps de l'email est manquant.")
 
-    to_email = "dsgattaca@gmail.com"
+    to_email = "xxx@gmail.com"
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
-    smtp_user = "dsgattaca@gmail.com"
+    smtp_user = "xxx@gmail.com"
 
     smtp_password = Variable.get("gmail_password", default_var=None)
     if smtp_password is None:

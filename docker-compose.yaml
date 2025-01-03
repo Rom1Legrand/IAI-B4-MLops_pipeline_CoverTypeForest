@@ -52,24 +52,25 @@ services:
     networks:
       - airflow_default
 
-  # Option 1 (default): Local MLflow PostgreSQL / service non utilisé si option 2
-  mlflow-postgres:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: mlflow
-      POSTGRES_PASSWORD: mlflow
-      POSTGRES_DB: mlflow
-    volumes:
-      - mlflow-db-volume:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "mlflow"]
-      interval: 10s
-      retries: 5
-      start_period: 5s
-    networks:
-      - airflow_default
 
-  redis:
+  # Option 1 (default): Local MLflow PostgreSQL / service non utilisé si option 2 / et service non utilisé si huggingface_server
+  #mlflow-postgres:
+  #  image: postgres:13
+  #  environment:
+  #    POSTGRES_USER: mlflow
+  #    POSTGRES_PASSWORD: mlflow
+  #    POSTGRES_DB: mlflow
+  #  volumes:
+  #    - mlflow-db-volume:/var/lib/postgresql/data
+  #  healthcheck:
+  #    test: ["CMD", "pg_isready", "-U", "mlflow"]
+  #    interval: 10s
+  #    retries: 5
+  #    start_period: 5s
+  #  networks:
+  #    - airflow_default
+
+  redis: # service non utilisé dans ce projet
     image: redis:7.2-bookworm
     expose:
       - 6379
@@ -244,9 +245,9 @@ services:
       - JENKINS_ADMIN_PASSWORD=${JENKINS_ADMIN_PASSWORD}
     volumes:
       - jenkins_home:/var/jenkins_home
-      # Docker-in-Docker volumes (commentés par défaut)
-      # - /var/run/docker.sock:/var/run/docker.sock
-      # - /usr/bin/docker:/usr/bin/docker
+      # Docker-in-Docker volumes (commentés par défaut / décommenté si nécessaire)
+      - /var/run/docker.sock:/var/run/docker.sock # Accès au socket Docker
+      # /usr/bin/docker:/usr/bin/docker # Accès au socket Docker
     networks:
       - airflow_default
     depends_on:
@@ -259,7 +260,7 @@ services:
       retries: 3
       start_period: 40s
 
- 
+  # otpion de  base pour le service mlflow / non utilisé si option 2 ou si huggingface_server
   #mlflow:
   #  build:
   #   context: .
@@ -284,37 +285,37 @@ services:
   #  networks:
   #    - airflow_default
 
-  # Option 2: NeonDB MLflow configuration
+  # Option 2: NeonDB MLflow configuration / Non nécessaire si option 1 ou si huggingface_server
   # Pour utiliser NeonDB:
   # 1. Commentez le mlflow ci-dessus (configuré pour utilise le service mlflow-postgres)
   # 2. Décommentez la section ci-dessous
-  mlflow:
-     build:
-       context: .
-       dockerfile: Dockerfile.mlflow
-       args:
-         - NEON_DATABASE_URL=${NEON_DATABASE_URL}
-     ports:
-       - "5000:5000"
-     environment:
-       NEON_DATABASE_URL: "${NEON_DATABASE_URL}"
-       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
-       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
-       S3_BUCKET: "${S3_BUCKET}"
-     env_file:
-       - .env
-       - .secrets
-     command: >
-       sh -c '
-       echo "Testing connection to NeonDB with URL: ${NEON_DATABASE_URL}" &&
-       mlflow server 
-       --host 0.0.0.0 
-       --port 5000 
-       --backend-store-uri "${NEON_DATABASE_URL}"
-       --default-artifact-root s3://${S3_BUCKET}/mlflow/ 
-       --serve-artifacts'
-     networks:
-       - airflow_default
+  #mlflow:
+  #  build:
+  #     context: .
+  #     dockerfile: Dockerfile.mlflow
+  #     args:
+  #       - NEON_DATABASE_URL=${NEON_DATABASE_URL}
+  #   ports:
+  #     - "5000:5000"
+  #   environment:
+  #     NEON_DATABASE_URL: "${NEON_DATABASE_URL}"
+  #     AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+  #     AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+  #     S3_BUCKET: "${S3_BUCKET}"
+  #   env_file:
+  #     - .env
+  #     - .secrets
+  #   command: >
+  #     sh -c '
+  #     echo "Testing connection to NeonDB with URL: ${NEON_DATABASE_URL}" &&
+  #     mlflow server 
+  #     --host 0.0.0.0 
+  #     --port 5000 
+  #     --backend-store-uri "${NEON_DATABASE_URL}"
+  #     --default-artifact-root s3://${S3_BUCKET}/mlflow/ 
+  #     --serve-artifacts'
+  #   networks:
+  #     - airflow_default
 
 networks:
   airflow_default:
@@ -323,5 +324,5 @@ networks:
 
 volumes:
   postgres-db-volume:
-  mlflow-db-volume:
+  #mlflow-db-volume:
   jenkins_home:

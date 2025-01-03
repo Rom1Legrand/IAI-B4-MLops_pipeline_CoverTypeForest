@@ -13,7 +13,12 @@ RUN apt-get update && apt-get install -y \
     gcc \
     git \
     curl \
+    docker.io \
+    docker-compose \
     && rm -rf /var/lib/apt/lists/*
+
+# Ajout de jenkins au groupe docker existant
+RUN usermod -aG docker jenkins
 
 # Configuration de l'environnement Python
 RUN python3 -m venv /opt/venv
