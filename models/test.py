@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import os
 from sklearn.preprocessing import StandardScaler
+import pytest
+
 
 # comapraison des données de référence et des nouvelles données
 @pytest.fixture
