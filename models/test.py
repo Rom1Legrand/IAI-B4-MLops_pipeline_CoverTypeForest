@@ -4,6 +4,7 @@ import numpy as np
 import os
 from sklearn.preprocessing import StandardScaler
 
+# comapraison des données de référence et des nouvelles données
 @pytest.fixture
 def reference_data():
     s3 = boto3.client('s3')
