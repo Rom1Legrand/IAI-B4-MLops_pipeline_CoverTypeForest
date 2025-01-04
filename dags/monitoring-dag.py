@@ -27,6 +27,8 @@ S3_BUCKET = Variable.get("S3_BUCKET")
 # accès S3
 REFERENCE_FILE = 'covertype/reference/covtype_80.csv'
 NEW_DATA_FILE = 'covertype/new_data/covtype_20.csv'
+# fichier à utiliser pour test drift
+# NEW_DATA_FILE = 'covertype/new_data/covtype_sample_drift.csv'
 
 # Colonnes à analyser (gardez les mêmes)
 COLUMNS_TO_ANALYZE = [
@@ -168,7 +170,6 @@ def prepare_email_no_drift_content(**context):
     context['ti'].xcom_push(key='email_subject', value=subject)
     context['ti'].xcom_push(key='email_body', value=body) 
 
-
 def send_email_with_smtp(**context):
     ti = context['ti']
 
@@ -216,8 +217,6 @@ def send_email_no_drift(**context):
     context['ti'].xcom_push(key='email_subject', value=subject)
     context['ti'].xcom_push(key='email_body', value=body)
     send_email_with_smtp(**context)
-
-
 
 # Arguments par défaut pour le DAG
 default_args = {
