@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 import boto3
 import logging
+from sklearn.metrics import f1_score
 
 logging.basicConfig(level=logging.INFO)
 
@@ -42,11 +43,14 @@ def train():
             model.fit(X, y)
             
             accuracy = model.score(X, y)
+            f1 = f1_score(y, model.predict(X), average='weighted')  # weighted car problème multi-classe
             logging.info(f"Accuracy: {accuracy}")
+            logging.info(f"F1 Score: {f1}")
 
             mlflow.sklearn.log_model(model, "model")
             mlflow.log_params(model.get_params())
             mlflow.log_metric("accuracy", accuracy)
+            mlflow.log_metric("f1_score", f1)         
             
     except Exception as e:
         logging.error(f"Erreur : {str(e)}")
