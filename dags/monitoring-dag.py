@@ -13,6 +13,8 @@ from evidently.report import Report
 from evidently.metric_preset import DataDriftPreset
 from evidently.ui.workspace.cloud import CloudWorkspace
 import logging
+import requests
+import boto3
 
 # Configuration du logging
 logging.basicConfig(level=logging.DEBUG)
@@ -20,14 +22,13 @@ logging.basicConfig(level=logging.DEBUG)
 # Variables Airflow
 EVIDENTLY_CLOUD_TOKEN = Variable.get("EVIDENTLY_CLOUD_TOKEN") 
 EVIDENTLY_CLOUD_PROJECT_ID = Variable.get("EVIDENTLY_CLOUD_PROJECT_ID")
+S3_BUCKET = Variable.get("S3_BUCKET")
 
-# Chemins des répertoires
-DATA_DIR = "/opt/airflow/data"
-REFERENCE_DIR = os.path.join(DATA_DIR, "reference")
-DATA_DRIFT_DIR = os.path.join(DATA_DIR, "data-drift")
-REFERENCE_FILE = os.path.join(REFERENCE_DIR, "covtype_reference_first100.csv")
+# accès S3
+REFERENCE_FILE = 'covertype/reference/covtype_80.csv'
+NEW_DATA_FILE = 'covertype/new_data/covtype_20.csv'
 
-# Colonnes à analyser
+# Colonnes à analyser (gardez les mêmes)
 COLUMNS_TO_ANALYZE = [
     "Elevation", "Aspect", "Slope", "Horizontal_Distance_To_Hydrology",
     "Vertical_Distance_To_Hydrology", "Horizontal_Distance_To_Roadways",
@@ -35,47 +36,69 @@ COLUMNS_TO_ANALYZE = [
     "Horizontal_Distance_To_Fire_Points"
 ]
 
-def _load_files(data_logs_filename):
-    reference = pd.read_csv(REFERENCE_FILE)
-    data_logs = pd.read_csv(data_logs_filename)
-    return reference, data_logs
-
 def detect_file(**context):
-    data_logs_list = glob.glob(os.path.join(DATA_DRIFT_DIR, "covtype_reference_update*.csv"))
-    if not data_logs_list:
+    """Vérifier si le fichier existe sur S3"""
+    try:
+        s3 = boto3.client('s3')
+        logging.info(f"Checking file in S3: {S3_BUCKET}/{NEW_DATA_FILE}")
+        s3.head_object(Bucket=S3_BUCKET, Key=NEW_DATA_FILE)
+        logging.info("File found in S3")
+        return "detect_data_drift_task"
+    except Exception as e:
+        logging.error(f"Error checking S3: {str(e)}")
         return "no_file_found_task"
-    data_logs_filename = max(data_logs_list, key=os.path.getctime)
-    context["task_instance"].xcom_push(key="data_logs_filename", value=data_logs_filename)
-    return "detect_data_drift_task"
+
+def _load_files():
+    """Charger les fichiers depuis S3"""
+    try:
+        logging.info("Starting to load files from S3...")
+        s3 = boto3.client('s3')
+
+        # Charger le fichier de référence
+        logging.info(f"Loading reference file: {S3_BUCKET}/{REFERENCE_FILE}")
+        ref_obj = s3.get_object(Bucket=S3_BUCKET, Key=REFERENCE_FILE)
+        reference = pd.read_csv(ref_obj['Body'])
+        logging.info(f"Reference file loaded, shape: {reference.shape}")
+
+        # Charger le nouveau fichier
+        logging.info(f"Loading new data file: {S3_BUCKET}/{NEW_DATA_FILE}")
+        new_obj = s3.get_object(Bucket=S3_BUCKET, Key=NEW_DATA_FILE)
+        new_data = pd.read_csv(new_obj['Body'])
+        logging.info(f"New data file loaded, shape: {new_data.shape}")
+
+        return reference, new_data
+    except Exception as e:
+        logging.error(f"Error loading files from S3: {str(e)}")
+        raise
 
 def detect_data_drift(**context):
     """Produire un rapport de dérive des données avec Evidently Cloud"""
-
-    # Initialiser la connexion au workspace Evidently Cloud
-    ws = CloudWorkspace(
-        token=EVIDENTLY_CLOUD_TOKEN,
-        url="https://app.evidently.cloud"
-    )
-
-    project = ws.get_project(EVIDENTLY_CLOUD_PROJECT_ID)
-
-    data_logs_filename = context["task_instance"].xcom_pull(key="data_logs_filename")
-    logging.debug(f"Récupéré le fichier des logs: {data_logs_filename}")
-
-    reference, data_logs = _load_files(data_logs_filename)
-
-    # Validation des colonnes
-    assert all(col in reference.columns for col in COLUMNS_TO_ANALYZE), "Colonnes manquantes dans les données de référence"
-    assert all(col in data_logs.columns for col in COLUMNS_TO_ANALYZE), "Colonnes manquantes dans les logs"
-
-    reference_filtered = reference[COLUMNS_TO_ANALYZE]
-    data_logs_filtered = data_logs[COLUMNS_TO_ANALYZE]
-
-    data_drift_report = Report(metrics=[DataDriftPreset()])
-    logging.debug("Rapport de dérive créé.")
-
     try:
-        data_drift_report.run(current_data=data_logs_filtered, reference_data=reference_filtered)
+        # Chargement des données depuis S3
+        logging.info("Loading files from S3...")
+        reference, new_data = _load_files()
+        logging.info(f"Reference data shape: {reference.shape}")
+        logging.info(f"New data shape: {new_data.shape}")
+
+        # Initialiser la connexion au workspace Evidently Cloud
+        ws = CloudWorkspace(
+            token=EVIDENTLY_CLOUD_TOKEN,
+            url="https://app.evidently.cloud"
+        )
+
+        project = ws.get_project(EVIDENTLY_CLOUD_PROJECT_ID)
+
+        # Validation des colonnes
+        assert all(col in reference.columns for col in COLUMNS_TO_ANALYZE), "Colonnes manquantes dans les données de référence"
+        assert all(col in new_data.columns for col in COLUMNS_TO_ANALYZE), "Colonnes manquantes dans les logs"
+
+        reference_filtered = reference[COLUMNS_TO_ANALYZE]
+        new_data_filtered = new_data[COLUMNS_TO_ANALYZE]
+
+        data_drift_report = Report(metrics=[DataDriftPreset()])
+        logging.debug("Rapport de dérive créé.")
+
+        data_drift_report.run(current_data=new_data_filtered, reference_data=reference_filtered)
         logging.debug("Rapport de dérive exécuté avec succès.")
 
         ws.add_report(project.id, data_drift_report, include_data=True)
@@ -99,30 +122,17 @@ def detect_data_drift(**context):
         context["task_instance"].xcom_push(key="drift_summary", value=data_drift_summary)
         logging.info(f"Nombre de colonnes dérivées détectées : {data_drift_summary}")
 
-        # Rechercher la métrique DataDriftTable pour les colonnes dérivées
-        data_drift_table = next(
-            (metric["result"] for metric in drift_results["metrics"] if metric["metric"] == "DataDriftTable"),
-            None
-        )
-
-        if data_drift_table:
-            drifted_columns = [
-                col for col, details in data_drift_table.get("drift_by_columns", {}).items() if details["drift_detected"]
-            ]
-            context["task_instance"].xcom_push(key="drifted_columns", value=drifted_columns)
-            logging.info(f"Colonnes dérivées : {', '.join(drifted_columns)}")
-
         # Décision basée sur la dérive détectée
         if data_drift_summary > 0:
             logging.info(f"Dérive détectée dans {data_drift_summary} colonnes.")
             context["task_instance"].xcom_push(key="drift_detected", value=True)
-            return ['trigger_jenkins_task', 'prepare_email_content_task']
+            return "trigger_jenkins_task"
         else:
             logging.info("Aucune dérive détectée.")
-            return 'no_drift_detected_task'
-
+            context["task_instance"].xcom_push(key="drift_detected", value=False)
+            return "no_drift_detected_task"
     except Exception as e:
-        logging.error(f"Erreur lors de la génération du rapport de dérive: {e}")
+        logging.error(f"Erreur dans detect_data_drift: {str(e)}")
         raise
 
 def trigger_jenkins_retrain(**context):
@@ -144,41 +154,35 @@ def trigger_jenkins_retrain(**context):
         logging.error(f"Error triggering Jenkins: {e}")
         raise
 
-def prepare_email_content_task(**context):
-    ti = context['ti']
-    drift_summary = ti.xcom_pull(key='drift_summary', task_ids='detect_data_drift_task')
-    drifted_columns = ti.xcom_pull(key='drifted_columns', task_ids='detect_data_drift_task') or []
-
-    logging.info(f"Drift Summary reçu: {drift_summary}")
-    logging.info(f"Colonnes dérivées : {drifted_columns}")
-
-    if drift_summary == 0:
-        subject = "Pas de drift détecté"
-        body = "Aucun drift n'a été détecté dans les données analysées."
-    else:
-        subject = f"Drift détecté dans {drift_summary} colonnes"
-        body = f"Le rapport de drift a détecté un drift dans les colonnes suivantes : {', '.join(drifted_columns)}."
-
+def prepare_email_drift_content(**context):
+    subject = "Drift détecté - Retraining lancé"
+    body = "Un drift a été détecté dans les données et le retraining a été lancé."
+    
     context['ti'].xcom_push(key='email_subject', value=subject)
     context['ti'].xcom_push(key='email_body', value=body)
+
+def prepare_email_no_drift_content(**context):
+    subject = "Pas de drift détecté"
+    body = "Aucun drift n'a été détecté dans les données."
+    
+    context['ti'].xcom_push(key='email_subject', value=subject)
+    context['ti'].xcom_push(key='email_body', value=body) 
+
 
 def send_email_with_smtp(**context):
     ti = context['ti']
 
-    subject = ti.xcom_pull(key='email_subject', task_ids='prepare_email_content_task')
-    body = ti.xcom_pull(key='email_body', task_ids='prepare_email_content_task')
-
-    if subject is None or body is None:
-        raise ValueError("Le sujet ou le corps de l'email est manquant.")
-
-    to_email = "xxx@gmail.com"
+    to_email = "dsgattaca@gmail.com"
     smtp_server = "smtp.gmail.com"
     smtp_port = 587
-    smtp_user = "xxx@gmail.com"
+    smtp_user = "dsgattaca@gmail.com"
 
     smtp_password = Variable.get("gmail_password", default_var=None)
     if smtp_password is None:
         raise ValueError("Le mot de passe Gmail n'est pas défini dans les variables Airflow.")
+
+    subject = ti.xcom_pull(key='email_subject')
+    body = ti.xcom_pull(key='email_body')
 
     msg = EmailMessage()
     msg.set_content(body)
@@ -197,6 +201,25 @@ def send_email_with_smtp(**context):
         print(error_message)
         raise Exception(error_message)
 
+def send_email_drift(**context):
+    ti = context['ti']
+    subject = ti.xcom_pull(key='email_subject', task_ids='prepare_email_drift_task')
+    body = ti.xcom_pull(key='email_body', task_ids='prepare_email_drift_task')
+    context['ti'].xcom_push(key='email_subject', value=subject)
+    context['ti'].xcom_push(key='email_body', value=body)
+    send_email_with_smtp(**context)
+
+def send_email_no_drift(**context):
+    ti = context['ti']
+    subject = ti.xcom_pull(key='email_subject', task_ids='prepare_email_no_drift_task')
+    body = ti.xcom_pull(key='email_body', task_ids='prepare_email_no_drift_task')
+    context['ti'].xcom_push(key='email_subject', value=subject)
+    context['ti'].xcom_push(key='email_body', value=body)
+    send_email_with_smtp(**context)
+
+
+
+# Arguments par défaut pour le DAG
 default_args = {
     'owner': 'RL',
     'start_date': datetime(2024, 10, 10),
@@ -206,13 +229,16 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
+# Définition du DAG
 dag = DAG(
-    'detect_data_drift_and_notify',
+    'detect_data_drift_notify_retrain',
     default_args=default_args,
-    description='Détecte la dérive des données et envoie une notification par email',
-    schedule_interval=timedelta(days=1),
+    description='Détecte la dérive des données, rentraine et envoie une notification par email',
+    schedule_interval=None,
+    catchup=False,
 )
 
+# Définition des tâches
 detect_file_task = BranchPythonOperator(
     task_id='detect_file_task',
     python_callable=detect_file,
@@ -220,7 +246,7 @@ detect_file_task = BranchPythonOperator(
     dag=dag,
 )
 
-detect_data_drift_task = PythonOperator(
+detect_data_drift_task = BranchPythonOperator(
     task_id='detect_data_drift_task',
     python_callable=detect_data_drift,
     provide_context=True,
@@ -234,16 +260,30 @@ trigger_jenkins_task = PythonOperator(
     dag=dag,
 )
 
-prepare_email_content_task = PythonOperator(
-    task_id='prepare_email_content_task',
-    python_callable=prepare_email_content_task,
+prepare_email_drift_task = PythonOperator(
+    task_id='prepare_email_drift_task',
+    python_callable=prepare_email_drift_content,
     provide_context=True,
     dag=dag,
 )
 
-send_email_task = PythonOperator(
-    task_id='send_email_task',
-    python_callable=send_email_with_smtp,
+prepare_email_no_drift_task = PythonOperator(
+    task_id='prepare_email_no_drift_task',
+    python_callable=prepare_email_no_drift_content,
+    provide_context=True,
+    dag=dag,
+)
+
+send_email_drift_task = PythonOperator(
+    task_id='send_email_drift_task',
+    python_callable=send_email_drift,
+    provide_context=True,
+    dag=dag,
+)
+
+send_email_no_drift_task = PythonOperator(
+    task_id='send_email_no_drift_task',
+    python_callable=send_email_no_drift,
     provide_context=True,
     dag=dag,
 )
@@ -253,6 +293,17 @@ no_file_found_task = DummyOperator(
     dag=dag,
 )
 
+no_drift_detected_task = DummyOperator(
+    task_id='no_drift_detected_task',
+    dag=dag,
+)
+
+# Définition du flux
 detect_file_task >> [detect_data_drift_task, no_file_found_task]
-detect_data_drift_task >> [trigger_jenkins_task, prepare_email_content_task]
-prepare_email_content_task >> send_email_task
+detect_data_drift_task >> [trigger_jenkins_task, no_drift_detected_task]
+
+# Branche avec drift
+trigger_jenkins_task >> prepare_email_drift_task >> send_email_drift_task
+
+# Branche sans drift
+no_drift_detected_task >> prepare_email_no_drift_task >> send_email_no_drift_task
