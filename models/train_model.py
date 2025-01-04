@@ -4,13 +4,21 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 import boto3
 import logging
+from sqlalchemy import create_engine
+from mlflow.store.db.utils import _initialize_tables
 
 logging.basicConfig(level=logging.INFO)
 
 def train():
     try:
         # Configuration MLflow
-        mlflow.set_tracking_uri(os.environ['NEON_DATABASE_URL'])
+        db_url = os.environ['NEON_DATABASE_URL']
+        
+        # Force initialization
+        engine = create_engine(db_url)
+        _initialize_tables(db_url)
+        
+        mlflow.set_tracking_uri(db_url)
         mlflow.set_experiment("forest_cover_type")
         logging.info("MLflow configuré")
 
