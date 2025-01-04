@@ -4,21 +4,14 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 import boto3
 import logging
-from sqlalchemy import create_engine
-from mlflow.store.db.utils import _initialize_tables
 
 logging.basicConfig(level=logging.INFO)
 
 def train():
     try:
-        # Configuration MLflow
-        db_url = os.environ['NEON_DATABASE_URL']
-        
-        # Force initialization
-        engine = create_engine(db_url)
-        _initialize_tables(db_url)
-        
-        mlflow.set_tracking_uri(db_url)
+        # Configuration MLflow avec PostgreSQL directement
+        tracking_uri = os.environ['NEON_DATABASE_URL'].replace('postgresql', 'postgresql+psycopg2')
+        mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment("forest_cover_type")
         logging.info("MLflow configuré")
 
@@ -44,7 +37,7 @@ def train():
             mlflow.sklearn.log_model(model, "model")
             mlflow.log_params(model.get_params())
             mlflow.log_metric("accuracy", accuracy)
-
+            
     except Exception as e:
         logging.error(f"Erreur : {str(e)}")
         raise
