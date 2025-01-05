@@ -46,7 +46,7 @@ Romain: Focused on production deployment, using Airflow and Evidently.ia for aut
 
 1. **S3 Bucket Structure**
 
-bash''' 
+```bash
 s3://S3bucket_name/covertype/
 ├── mlflow_artifact/
 ├── models/
@@ -59,7 +59,7 @@ s3://S3bucket_name/covertype/
 │   └── covtype_80.csv
 ├── test_reports/
 │   └── test_report_xxxxx.csv
-''' 
+```
 
 2. **Environment Setup**
 ```bash
