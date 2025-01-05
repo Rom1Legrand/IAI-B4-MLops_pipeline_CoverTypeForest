@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 def train():
     try:
         # Configuration MLflow
-        tracking_uri = os.environ['NEON_DATABASE_URL'].replace('postgresql', 'postgresql+psycopg2')
+        tracking_uri = os.environ['NEON_DATABASE_URL']
         mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment("forest_cover_type")
         logging.info("MLflow configuré")
@@ -39,7 +39,7 @@ def train():
 
         # Entrainement
         with mlflow.start_run():
-            model = RandomForestClassifier(n_estimators=100)
+            model = RandomForestClassifier(n_estimators=10)
             model.fit(X, y)
             
             accuracy = model.score(X, y)

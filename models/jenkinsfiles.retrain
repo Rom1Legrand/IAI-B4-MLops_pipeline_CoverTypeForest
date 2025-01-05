@@ -21,7 +21,7 @@ pipeline {
            steps {
                sh '''
                    cd models
-                   python3 train_model.py
+                   python3 train_model_version_simple.py
                '''
            }
        }
