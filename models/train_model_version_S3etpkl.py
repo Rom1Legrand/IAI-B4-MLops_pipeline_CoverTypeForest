@@ -9,6 +9,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.preprocessing import MinMaxScaler
 from sqlalchemy import create_engine, text  # Pour initialiser la base de données
+import alembic.config
+import mlflow.store.db.utils
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -60,14 +63,13 @@ PREDICTION_COLUMNS = [
 
 def initialize_mlflow_db():
     engine = create_engine(os.environ['NEON_DATABASE_URL'])
-    with engine.connect() as connection:
-        # Vérifier si la table existe
-        result = connection.execute(text("SELECT version_num FROM alembic_version"))
-        version = result.fetchone()[0]
-        if version != '4465047574b1':
-            # Mettre à jour la version
-            connection.execute(text("UPDATE alembic_version SET version_num = '4465047574b1'"))
-            connection.commit()
+    
+    # Forcer la création des tables MLflow
+    mlflow.store.db.utils._initialize_tables(os.environ['NEON_DATABASE_URL'])
+
+# Avant la configuration MLflow
+initialize_mlflow_db()
+mlflow.set_tracking_uri(os.environ['NEON_DATABASE_URL'])
 
 # Appeler avant mlflow.set_tracking_uri
 initialize_mlflow_db()
