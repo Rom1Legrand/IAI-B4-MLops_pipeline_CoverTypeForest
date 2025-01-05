@@ -61,24 +61,10 @@ PREDICTION_COLUMNS = [
     'Wilderness_Area3', 'Soil_Type12', 'Soil_Type2', 'Wilderness_Area1'
 ]
 
-def initialize_mlflow_db():
-    # Créer l'engine SQLAlchemy
-    engine = create_engine(os.environ['NEON_DATABASE_URL'])
-    
-    # Initialiser les tables avec l'engine
-    mlflow.store.db.utils._initialize_tables(engine)
-
-# Avant la configuration MLflow
-initialize_mlflow_db()
-mlflow.set_tracking_uri(os.environ['NEON_DATABASE_URL'])
-
-# Appeler avant mlflow.set_tracking_uri
-initialize_mlflow_db()
-
 def predict():
     try:
         # Configuration MLflow
-        tracking_uri = os.environ['NEON_DATABASE_URL'].replace('postgresql', 'postgresql+psycopg2')
+        tracking_uri = os.environ['NEON_DATABASE_URL']
         mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment("forest_cover_type")
         logger.info("MLflow configuré")
