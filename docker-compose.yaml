@@ -223,7 +223,7 @@ services:
       - .env
       - .secrets
     volumes:
-      - ./streamlit:/app
+      - ./streamlit:/streamlit
     depends_on:
       - postgres
     networks:
