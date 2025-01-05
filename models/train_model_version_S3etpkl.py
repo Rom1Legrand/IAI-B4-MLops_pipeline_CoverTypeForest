@@ -57,6 +57,19 @@ PREDICTION_COLUMNS = [
     'Wilderness_Area3', 'Soil_Type12', 'Soil_Type2', 'Wilderness_Area1'
 ]
 
+def initialize_mlflow_db():
+    engine = create_engine(os.environ['NEON_DB_URL'])
+    with engine.connect() as connection:
+        # Vérifier si la table existe
+        result = connection.execute("SELECT version_num FROM alembic_version")
+        version = result.fetchone()[0]
+        if version != '4465047574b1':
+            # Mettre à jour la version
+            connection.execute("UPDATE alembic_version SET version_num = '4465047574b1'")
+
+# Appeler avant mlflow.set_tracking_uri
+initialize_mlflow_db()
+
 def predict():
     try:
         # Configuration MLflow
