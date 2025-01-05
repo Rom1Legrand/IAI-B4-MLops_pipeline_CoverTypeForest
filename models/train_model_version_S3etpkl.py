@@ -59,7 +59,7 @@ PREDICTION_COLUMNS = [
 ]
 
 def initialize_mlflow_db():
-    engine = create_engine(os.environ['NEON_DB_URL'])
+    engine = create_engine(os.environ['NEON_DATABASE_URL'])
     with engine.connect() as connection:
         # Vérifier si la table existe
         result = connection.execute("SELECT version_num FROM alembic_version")
