@@ -62,10 +62,11 @@ PREDICTION_COLUMNS = [
 ]
 
 def initialize_mlflow_db():
+    # Créer l'engine SQLAlchemy
     engine = create_engine(os.environ['NEON_DATABASE_URL'])
     
-    # Forcer la création des tables MLflow
-    mlflow.store.db.utils._initialize_tables(os.environ['NEON_DATABASE_URL'])
+    # Initialiser les tables avec l'engine
+    mlflow.store.db.utils._initialize_tables(engine)
 
 # Avant la configuration MLflow
 initialize_mlflow_db()
