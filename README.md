@@ -46,7 +46,7 @@ Romain: Focused on production deployment, using Airflow and Evidently.ia for aut
 
 1. **S3 Bucket Structure**
 
-python ''' 
+bash''' 
 s3://S3bucket_name/covertype/
 ├── mlflow_artifact/
 ├── models/
@@ -119,6 +119,7 @@ JENKINS_ADMIN_PASSWORD=xxxx
 
 ## Launch Services
 ```bash
+docker-compose build
 docker-compose up -d
 ```
 
