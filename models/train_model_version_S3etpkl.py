@@ -61,11 +61,15 @@ PREDICTION_COLUMNS = [
     'Wilderness_Area3', 'Soil_Type12', 'Soil_Type2', 'Wilderness_Area1'
 ]
 
+# Configuration MLflow
+mlflow_tracking_uri = "postgresql+psycopg2://" + os.getenv("NEON_DATABASE_URL").replace("postgresql://", "")
+mlflow.set_tracking_uri(mlflow_tracking_uri)
+mlflow.set_experiment("forest_cover_type")
+
 def predict():
     try:
         # Configuration MLflow
         tracking_uri = os.environ['NEON_DATABASE_URL']
-        mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment("forest_cover_type")
         logger.info("MLflow configuré")
 

@@ -1,18 +1,60 @@
 import os
+import boto3
+import pickle
+import logging
 import mlflow
+from dotenv import load_dotenv
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-import boto3
-import logging
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.preprocessing import MinMaxScaler
+from sqlalchemy import create_engine, text  # Pour initialiser la base de données
+import alembic.config
+import mlflow.store.db.utils
+
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Configuration des chemins
+current_dir = os.path.dirname(os.path.abspath(__file__))  # Dossier 'models'
+project_root = os.path.dirname(current_dir)  # Dossier racine du projet
+
+# Chemins vers les fichiers de configuration
+env_path = os.path.join(project_root, '.env')
+secrets_path = os.path.join(project_root, '.secrets')
+
+logger.info(f"Chargement des variables depuis {env_path}")
+logger.info(f"Chargement des secrets depuis {secrets_path}")
+
+# Chargement des variables d'environnement
+load_dotenv(env_path)
+load_dotenv(secrets_path)
+
+# Verify AWS credentials
+aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+
+if not aws_access_key or not aws_secret_key:
+    logger.error("AWS credentials manquants:")
+    logger.error(f"AWS_ACCESS_KEY_ID: {'Présent' if aws_access_key else 'Manquant'}")
+    logger.error(f"AWS_SECRET_ACCESS_KEY: {'Présent' if aws_secret_key else 'Manquant'}")
+    exit(1)
+
+# Create S3 client with credentials
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=aws_access_key,
+    aws_secret_access_key=aws_secret_key
+)
+# Configuration MLflow
+mlflow_tracking_uri = "postgresql+psycopg2://" + os.getenv("NEON_DATABASE_URL").replace("postgresql://", "")
+mlflow.set_tracking_uri(mlflow_tracking_uri)
+mlflow.set_experiment("forest_cover_type")
 
 def train():
     try:
         # Configuration MLflow
-        tracking_uri = os.environ['NEON_DATABASE_URL']
-        mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment("forest_cover_type")
         logging.info("MLflow configuré")
 

@@ -19,41 +19,15 @@ st.set_page_config(layout="wide")
 parent_dir = Path(__file__).parent.parent
 load_dotenv(parent_dir / '.env')
 load_dotenv(parent_dir / '.secrets')
-mlflow.set_tracking_uri(os.environ['NEON_DATABASE_URL'])
-mlflow.set_experiment("forest_cover_type")
 
 st.title("🌲 Forest Cover Type - MLOps Monitor")
 
 # Ajoutons les tabs
-tab1, tab2 = st.tabs(["📊 Dashboard", "📈 Drift Analysis"])
+tabs = st.tabs(["📊 Dashboard"])
 
-with tab1:
-    st.header("Dashboard")
-    
-    # Récupération des runs MLflow
-    runs = mlflow.search_runs(order_by=["start_time DESC"])
-    if not runs.empty:
-        latest_run = runs.iloc[0]
-        
-        # Adjust column width and layout
-        col1, col2, col3 = st.columns([1, 1, 2])  # Make last column wider
-        with col1:
-            st.metric("🎯 Accuracy", f"{latest_run['metrics.accuracy']:.2%}")
-        with col2:
-            st.metric("📊 F1 Score", f"{latest_run['metrics.f1_score']:.2%}")
-        with col3:
-            formatted_date = latest_run['start_time'].strftime('%d-%m-%Y')
-            st.metric("🔄 Last Training", formatted_date)
+with tabs[0]:
 
-        # Performance Trends
-        st.subheader("📈 Performance History")
-        fig = px.line(runs, 
-                     x='start_time', 
-                     y=['metrics.accuracy', 'metrics.f1_score'],
-                     labels={'value': 'Score', 'variable': 'Metric'})
-        st.plotly_chart(fig)
-
-        # Test Results Section
+    # Test Results Section
     st.header("🧪 Test Results")
 
     try:
