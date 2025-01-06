@@ -26,7 +26,7 @@ S3_BUCKET = Variable.get("S3_BUCKET")
 
 # accès S3
 REFERENCE_FILE = 'covertype/reference/covtype_80.csv'
-#NEW_DATA_FILE = 'covertype/new_data/covtype_20.csv'
+# NEW_DATA_FILE = 'covertype/new_data/covtype_20.csv'
 # fichier à utiliser pour test drift
 NEW_DATA_FILE = 'covertype/new_data/covtype_sample_drift.csv'
 

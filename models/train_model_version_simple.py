@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.preprocessing import MinMaxScaler
-from sqlalchemy import create_engine, text  # Pour initialiser la base de données
+from sqlalchemy import create_engine, text
 import alembic.config
 import mlflow.store.db.utils
 
