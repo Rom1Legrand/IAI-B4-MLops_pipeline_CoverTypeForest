@@ -39,7 +39,7 @@ def train():
 
         # Entrainement
         with mlflow.start_run():
-            model = RandomForestClassifier(n_estimators=10)
+            model = RandomForestClassifier(n_estimators=50)
             model.fit(X, y)
             
             accuracy = model.score(X, y)
