@@ -1,7 +1,7 @@
 # Seuls les packages vraiment nécessaires pour Jenkins
 
 # MLOps essentials
-mlflow==2.11.1  # Inclut déjà numpy, pandas, scikit-learn, psycopg2-binary
+mlflow==2.15.0 
 evidently==0.4.17  # Pour l'analyse des drifts
 
 # Utilities
