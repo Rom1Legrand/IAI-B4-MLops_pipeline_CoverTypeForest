@@ -11,8 +11,6 @@ from sklearn.preprocessing import MinMaxScaler
 from sqlalchemy import create_engine, text  # Pour initialiser la base de données
 import alembic.config
 import mlflow.store.db.utils
-from mlflow.store.tracking.sqlalchemy_store import SqlAlchemyStore
-from datetime import datetime
 
 
 logging.basicConfig(level=logging.INFO)
@@ -43,11 +41,9 @@ if not aws_access_key or not aws_secret_key:
     logger.error(f"AWS_SECRET_ACCESS_KEY: {'Présent' if aws_secret_key else 'Manquant'}")
     exit(1)
 
-
-tracking_uri = "postgresql+psycopg2://" + os.getenv("NEON_DATABASE_URL").replace("postgresql://", "")
-store = SqlAlchemyStore(tracking_uri, "./mlruns")
-
-mlflow.set_tracking_uri(tracking_uri)
+# Configuration MLflow
+mlflow_tracking_uri = "postgresql+psycopg2://" + os.getenv("NEON_DATABASE_URL").replace("postgresql://", "")
+mlflow.set_tracking_uri(mlflow_tracking_uri)
 mlflow.set_experiment("forest_cover_type")
 
 def train():
