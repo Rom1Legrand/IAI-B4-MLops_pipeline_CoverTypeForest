@@ -12,7 +12,7 @@ from evidently.report import Report
 from evidently.metric_preset import DataDriftPreset
 from evidently.metrics import *
 
-# Add at the top of the file, after imports
+# format de la page
 st.set_page_config(layout="wide")
 
 # Chargement des variables d'environnement
@@ -22,23 +22,23 @@ load_dotenv(parent_dir / '.secrets')
 
 st.title("🌲 Forest Cover Type - MLOps Monitor")
 
-# Ajoutons les tabs
+# Ajout tabs
 tabs = st.tabs(["📊 Dashboard"])
 
 with tabs[0]:
 
-    # Test Results Section
+    # Test results
     st.header("🧪 Test Results")
 
     try:
-        # Configure S3 client
+        # Configuration S3 client
         s3 = boto3.client(
             's3',
             aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY']
         )
 
-        # Get latest test report
+        # Récupération dernier rapport de test sur S3
         response = s3.list_objects_v2(
             Bucket='rom1',
             Prefix='covertype/test_reports/'
@@ -47,9 +47,9 @@ with tabs[0]:
         obj = s3.get_object(Bucket='rom1', Key=latest_file)
         test_df = pd.read_csv(obj['Body'])
 
-               # Display results in better layout
+        # mise en forme
         st.subheader("Test Summary")
-        col1, col2 = st.columns([1, 2])  # Adjust column ratio
+        col1, col2 = st.columns([1, 2])  # ajustement des colonnes
         
         with col1:
             test_status = test_df['status'].value_counts()
@@ -63,7 +63,7 @@ with tabs[0]:
         
         with col2:
             st.subheader("Test Details")
-            # Format test results table
+            # Affichage des résultats des tests
             display_df = test_df[['test_name', 'status', 'description']].copy()
             display_df = display_df.style.apply(lambda x: ['background-color: #2ecc71' if v == 'PASSED' 
                                                          else 'background-color: #e74c3c' 

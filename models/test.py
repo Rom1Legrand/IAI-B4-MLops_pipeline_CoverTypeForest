@@ -8,12 +8,14 @@ from sklearn.preprocessing import StandardScaler
 
 test_results = []  # Pour stocker les résultats des tests
 
+# Fixtures
 @pytest.fixture(autouse=True, scope="session")
 def handle_test_results(request):
     yield
     print("\nSauvegarde des résultats...")
     save_test_results()
 
+# Fonction pour récupérer les données de référence et les nouvelles données
 @pytest.fixture
 def reference_data():
     s3 = boto3.client('s3')
@@ -28,6 +30,7 @@ def new_data():
     data_obj = s3.get_object(Bucket=bucket, Key='covertype/new_data/covtype_20.csv')
     return pd.read_csv(data_obj['Body'])
 
+# Fonction pour sauvegarder les résultats des tests
 def save_test_results():
     """Sauvegarde les résultats dans un CSV sur S3"""
     try:
@@ -63,6 +66,8 @@ def save_test_results():
         print(f"Erreur lors de la sauvegarde du rapport: {str(e)}")
         print(f"Variables d'environnement disponibles: {list(os.environ.keys())}")
 
+# Tests
+# Fonction pour tester la cohérence du schéma
 def test_schema_consistency(reference_data, new_data):
     """Vérifie que les deux datasets ont les mêmes colonnes"""
     try:
@@ -82,6 +87,7 @@ def test_schema_consistency(reference_data, new_data):
         })
         raise
 
+# Fonction pour tester les types de données
 def test_data_types(reference_data, new_data):
     """Vérifie que les types de données sont cohérents"""
     try:
@@ -102,6 +108,7 @@ def test_data_types(reference_data, new_data):
         })
         raise
 
+# Fonction pour tester les différences de valeurs min/max
 def test_value_ranges(reference_data, new_data):
     """Vérifie que les nouvelles données sont dans les plages acceptables"""
     try:
@@ -126,6 +133,7 @@ def test_value_ranges(reference_data, new_data):
         })
         raise
 
+# Fonction pour tester les valeurs manquantes
 def test_missing_values(reference_data, new_data):
     """Vérifie le pourcentage de valeurs manquantes"""
     max_missing_pct = 0.1
@@ -148,6 +156,7 @@ def test_missing_values(reference_data, new_data):
         })
         raise
 
+# Fonction pour tester les distributions statistiques
 def test_statistical_distribution(reference_data, new_data):
     """Compare les distributions statistiques de base"""
     try:
@@ -174,6 +183,7 @@ def test_statistical_distribution(reference_data, new_data):
         })
         raise
 
+# Fonction de résumé
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     print("\n============================================")
     print("DÉBUT DE LA CRÉATION DU RAPPORT")

@@ -30,7 +30,7 @@ REFERENCE_FILE = 'covertype/reference/covtype_80.csv'
 # fichier à utiliser pour test drift
 NEW_DATA_FILE = 'covertype/new_data/covtype_sample_drift.csv'
 
-# Colonnes à analyser (gardez les mêmes)
+# Colonnes à analyser (gardez les mêmes que dans le notebook / entrainement du model)
 COLUMNS_TO_ANALYZE = [
     "Elevation", "Aspect", "Slope", "Horizontal_Distance_To_Hydrology",
     "Vertical_Distance_To_Hydrology", "Horizontal_Distance_To_Roadways",
@@ -38,6 +38,7 @@ COLUMNS_TO_ANALYZE = [
     "Horizontal_Distance_To_Fire_Points"
 ]
 
+# fonction de détection de fichier
 def detect_file(**context):
     """Vérifier si le fichier existe sur S3"""
     try:
@@ -50,6 +51,7 @@ def detect_file(**context):
         logging.error(f"Error checking S3: {str(e)}")
         return "no_file_found_task"
 
+# Fonction pour charger les fichiers depuis S3
 def _load_files():
     """Charger les fichiers depuis S3"""
     try:
@@ -73,6 +75,7 @@ def _load_files():
         logging.error(f"Error loading files from S3: {str(e)}")
         raise
 
+# Fonction pour détecter la dérive des données
 def detect_data_drift(**context):
     """Produire un rapport de dérive des données avec Evidently Cloud"""
     try:
@@ -137,6 +140,7 @@ def detect_data_drift(**context):
         logging.error(f"Erreur dans detect_data_drift: {str(e)}")
         raise
 
+# Fonction pour déclencher le retraining via Jenkins
 def trigger_jenkins_retrain(**context):
     """Déclenche le retraining via Jenkins"""
     jenkins_url = "http://jenkins:8080"
@@ -156,6 +160,7 @@ def trigger_jenkins_retrain(**context):
         logging.error(f"Error triggering Jenkins: {e}")
         raise
 
+# Fonctions pour preparer le contenu des e-mails avec drift
 def prepare_email_drift_content(**context):
     subject = "Drift détecté - Retraining lancé"
     body = "Un drift a été détecté dans les données et le retraining a été lancé."
@@ -163,6 +168,7 @@ def prepare_email_drift_content(**context):
     context['ti'].xcom_push(key='email_subject', value=subject)
     context['ti'].xcom_push(key='email_body', value=body)
 
+# Fonctions pour preparer le contenu des e-mails avec non drift
 def prepare_email_no_drift_content(**context):
     subject = "Pas de drift détecté"
     body = "Aucun drift n'a été détecté dans les données."
@@ -170,6 +176,7 @@ def prepare_email_no_drift_content(**context):
     context['ti'].xcom_push(key='email_subject', value=subject)
     context['ti'].xcom_push(key='email_body', value=body) 
 
+# Fonction pour confugurer l'envoie d'un email avec SMTP
 def send_email_with_smtp(**context):
     ti = context['ti']
 
@@ -202,6 +209,7 @@ def send_email_with_smtp(**context):
         print(error_message)
         raise Exception(error_message)
 
+# Fonction pour envoyer un e-mail avec drift
 def send_email_drift(**context):
     ti = context['ti']
     subject = ti.xcom_pull(key='email_subject', task_ids='prepare_email_drift_task')
@@ -210,6 +218,7 @@ def send_email_drift(**context):
     context['ti'].xcom_push(key='email_body', value=body)
     send_email_with_smtp(**context)
 
+# Fonction pour envoyer un e-mail sans drift
 def send_email_no_drift(**context):
     ti = context['ti']
     subject = ti.xcom_pull(key='email_subject', task_ids='prepare_email_no_drift_task')
@@ -221,7 +230,7 @@ def send_email_no_drift(**context):
 # Arguments par défaut pour le DAG
 default_args = {
     'owner': 'RL',
-    'start_date': datetime(2024, 10, 10),
+    'start_date': datetime(2024, 12, 12),
     'email_on_failure': True,
     'email_on_retry': False,
     'retries': 1,

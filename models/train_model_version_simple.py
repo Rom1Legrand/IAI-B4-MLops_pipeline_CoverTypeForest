@@ -13,22 +13,22 @@ import mlflow.store.db.utils
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configuration des chemins
+# configuration des chemins
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 
-# Chemins vers les fichiers de configuration
+# chemins vers les fichiers de configuration
 env_path = os.path.join(project_root, '.env')
 secrets_path = os.path.join(project_root, '.secrets')
 
 logger.info(f"Chargement des variables depuis {env_path}")
 logger.info(f"Chargement des secrets depuis {secrets_path}")
 
-# Chargement des variables d'environnement
+# chargement des variables d'environnement
 load_dotenv(env_path)
 load_dotenv(secrets_path)
 
-# Verify AWS credentials
+# vérification des variables d'env.
 aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
 aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
@@ -38,11 +38,12 @@ if not aws_access_key or not aws_secret_key:
     logger.error(f"AWS_SECRET_ACCESS_KEY: {'Présent' if aws_secret_key else 'Manquant'}")
     exit(1)
 
-# Configuration MLflow
+# configuration du tracking MLflow avec la base de données
 mlflow_tracking_uri = "postgresql+psycopg2://" + os.getenv("NEON_DATABASE_URL").replace("postgresql://", "")
 mlflow.set_tracking_uri(mlflow_tracking_uri)
 mlflow.set_experiment("forest_cover_type")
 
+# fonction d'entrainement
 def train():
     try:
         # Configuration MLflow
